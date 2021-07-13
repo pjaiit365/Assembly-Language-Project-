@@ -11,6 +11,8 @@ section .data
 	stdout equ 1
 	sys_read equ 0
 	stdin equ 0
+	outofchances db 'You are out of chances', 10, 13
+	lenoutofchances equ $-outofchances
 	generatedNumber dq '8'
 	tryNumber db '4',10,13,
 	greaterText db 'The number you entered is greater than the program generated number.',10,13,
@@ -19,18 +21,22 @@ section .data
         lenLowerText equ $ -lowerText
 	playAgainText db 'Would you like to play again?[Y/N] Type 1 for YES or 2 for NO: '
 	lenPlayAgain equ $ -playAgainText
-	yes dq '1'
-	no dq '2'
+	yes db '1'
+	no db '2'
 
 section .bss
 	enterNumber resb 20
-	playInput resb 1
+	playInput resb 5
 	linebreak resb 1
+	checker resb 1
 
 section .text
 	global _start
 
 _start:
+	mov rcx, 0
+	mov [checker], rcx
+
 	call _startIntro
 	call _inputText
 	call _playAgain
@@ -45,7 +51,22 @@ _startIntro:
 	syscall
 	ret
 	
+_outofchances:
+	mov rax, sys_write
+	mov rdi, stdout
+	mov rsi, outofchances
+	mov rdx, lenoutofchances
+	syscall
+	
+	jmp _playAgain
+
 _inputText:
+	mov rcx, [checker]
+	inc rcx
+	mov [checker], rcx	
+	cmp rcx, 3
+	jg _outofchances
+
 	mov rax, sys_write
 	mov rdi, stdout
 	mov rsi, enterNumberText
@@ -57,7 +78,7 @@ _inputText:
 	mov rsi, enterNumber
 	mov rdx, 20
 	syscall
-
+	
 	call text_to_num
 
 	mov rax, [enterNumber]
@@ -86,8 +107,7 @@ text_to_num:
 		jmp l
 		end:
 			mov [enterNumber], rax
-			ret
-
+	ret
 
 _exit:
 	mov rax, 60
@@ -149,20 +169,17 @@ _playAgain:
 	mov rax, sys_read
         mov rdi, stdin
         mov rsi, playInput
-        mov rdx, 1
+        mov rdx, 5
         syscall
 
-	mov byte [tryNumber], '4'
-
-        mov rcx, [playInput]
-        sub rcx, '0'
-	mov rax, [yes]
-	sub rax, '0'
-        cmp rcx, rax
+        mov rbx, playInput
+        mov al, [rbx]
+	mov rcx, yes
+	mov ah, [rcx]
+        ;cmp rax, rcx
+        cmp al, ah
         je _start
-	mov rbx, [no]
-	sub rbx, '0'
-        cmp rcx, rbx
-        je _exit
+	
+	jmp _exit
 
 	ret
