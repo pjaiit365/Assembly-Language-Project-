@@ -23,14 +23,14 @@ section .data
 	no dq '2'
 
 section .bss
-	enterNumber resb 1
+	enterNumber resb 20
 	playInput resb 1
+	linebreak resb 1
 
 section .text
 	global _start
 
 _start:
-
 	call _startIntro
 	call _inputText
 	call _playAgain
@@ -44,22 +44,8 @@ _startIntro:
 	mov rdx, lenTryOutput
 	syscall
 	ret
-
+	
 _inputText:
-	dec byte [tryNumber]
-
-	mov rax, sys_write
-	mov rdi, stdout
-	mov rsi, tryText
-	mov rdx, 4
-	syscall
-
-	mov rax, sys_write
-	mov rdi, stdout
-	mov rsi, tryNumber
-	mov rdx, 1
-	syscall
-
 	mov rax, sys_write
 	mov rdi, stdout
 	mov rsi, enterNumberText
@@ -69,19 +55,39 @@ _inputText:
 	mov rax, sys_read
 	mov rdi, stdin
 	mov rsi, enterNumber
-	mov rdx, 1
+	mov rdx, 20
 	syscall
 
+	call text_to_num
+
 	mov rax, [enterNumber]
-	sub rax, '0'
+	;sub rax, '0'
 	mov rcx, [generatedNumber]
 	sub rcx, '0'
 	cmp rax, rcx
 	je _jumpRight
-	cmp rax, rcx
-	jne _jumpWrong
-	syscall
+
+	jmp _jumpWrong
+
 	ret
+
+text_to_num:
+	mov rbx, enterNumber
+	mov rax, 0
+	l:
+		movzx rcx, byte [rbx]
+		cmp rcx, 0xa
+		je end
+		imul rax, 0xa
+		mov rdx, rcx
+		sub rcx, 0x30
+		inc rbx
+		add rax, rcx
+		jmp l
+		end:
+			mov [enterNumber], rax
+			ret
+
 
 _exit:
 	mov rax, 60
@@ -94,7 +100,8 @@ _jumpRight:
 	mov rsi, rightText
 	mov rdx, lenRightText
 	syscall
-	ret
+	
+	jmp _playAgain
 
 _jumpWrong:
 	mov rax, sys_write
@@ -104,15 +111,14 @@ _jumpWrong:
 	syscall
 
 	mov rax, [enterNumber]
-	sub rax, '0'
+	;sub rax, '0'
 	mov rcx, [generatedNumber]
 	sub rcx, '0'
 	cmp rax, rcx
 	jl _lowerInput
-	jmp _inputText
-	cmp rax, rcx
-	jg _greaterInput
-	syscall
+
+	jmp _greaterInput
+
 	ret
 
 _greaterInput:
@@ -121,15 +127,17 @@ _greaterInput:
 	mov rsi, greaterText
 	mov rdx, lenGreaterText
 	syscall
-	ret
-
+	
+	jmp _inputText
+	
 _lowerInput:
         mov rax, sys_write
         mov rdi, stdout
         mov rsi, lowerText
         mov rdx, lenLowerText
         syscall
-	ret
+	
+	jmp _inputText
 
 _playAgain:
         mov rax, sys_write
@@ -138,7 +146,7 @@ _playAgain:
         mov rdx, 63
         syscall
 
-        mov rax, sys_read
+	mov rax, sys_read
         mov rdi, stdin
         mov rsi, playInput
         mov rdx, 1
@@ -153,8 +161,8 @@ _playAgain:
         cmp rcx, rax
         je _start
 	mov rbx, [no]
-	mov rbx, '0'
+	sub rbx, '0'
         cmp rcx, rbx
         je _exit
-        syscall
+
 	ret
